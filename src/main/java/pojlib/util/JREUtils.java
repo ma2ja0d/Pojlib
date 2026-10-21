@@ -144,7 +144,7 @@ public class JREUtils {
     public static void relocateLibPath(final Context ctx, MinecraftInstances.Instance instance) {
         sNativeLibDir = ctx.getApplicationInfo().nativeLibraryDir;
 
-        LD_LIBRARY_PATH = ctx.getFilesDir() + "/runtimes/JRE/bin:" + ctx.getFilesDir() + "/runtimes/JRE/lib:" +
+        LD_LIBRARY_PATH = Constants.RUNTIME_DIR + "/bin:" + Constants.RUNTIME_DIR + "/lib:" +
                 "/system/lib64:/vendor/lib64:/vendor/lib64/hw:" + ctx.getDataDir().toPath().resolve(instance.instanceName) + ":" +
                 sNativeLibDir;
     }
@@ -152,18 +152,18 @@ public class JREUtils {
     public static void setJavaEnvironment(Activity activity, MinecraftInstances.Instance instance) throws Throwable {
         Map<String, String> envMap = new ArrayMap<>();
         envMap.put("POJLIB_NATIVEDIR", activity.getApplicationInfo().nativeLibraryDir);
-        envMap.put("JAVA_HOME", activity.getFilesDir() + "/runtimes/JRE");
+        envMap.put("JAVA_HOME", Constants.RUNTIME_DIR);
         envMap.put("HOME", instance.gameDir);
         //envMap.put("APP_HOME", Constants.USER_HOME);
         envMap.put("TMPDIR", activity.getCacheDir().getAbsolutePath());
         envMap.put("VR_MODEL", API.model);
         envMap.put("POJLIB_RENDERER", "MobileGLUES");
-        envMap.put("MG_DIR_PATH", activity.getFilesDir() + "/mg");
+        envMap.put("MG_DIR_PATH", Constants.MG_DIR);
 
         envMap.put("LD_LIBRARY_PATH", LD_LIBRARY_PATH);
-        envMap.put("PATH", activity.getFilesDir() + "/runtimes/JRE/bin:" + Os.getenv("PATH"));
+        envMap.put("PATH", Constants.RUNTIME_DIR + "/bin:" + Os.getenv("PATH"));
 
-        File mg = new File(activity.getFilesDir() + "/mg");
+        File mg = new File(Constants.MG_DIR);
         mg.mkdirs();
 
         File customEnvFile = new File(Constants.USER_HOME, "custom_env.txt");
@@ -183,8 +183,8 @@ public class JREUtils {
             Os.setenv(env.getKey(), env.getValue(), true);
         }
 
-        File serverFile = new File(activity.getFilesDir() + "/runtimes/JRE/lib/server/libjvm.so");
-        jvmLibraryPath = activity.getFilesDir() + "/runtimes/JRE/lib/" + (serverFile.exists() ? "server" : "client");
+        File serverFile = new File(Constants.RUNTIME_DIR + "/lib/server/libjvm.so");
+        jvmLibraryPath = Constants.RUNTIME_DIR + "/lib/" + (serverFile.exists() ? "server" : "client");
         Log.d("DynamicLoader","Base LD_LIBRARY_PATH: "+LD_LIBRARY_PATH);
         Log.d("DynamicLoader","Internal LD_LIBRARY_PATH: "+jvmLibraryPath+":"+LD_LIBRARY_PATH);
         setLdLibraryPath(jvmLibraryPath+":"+LD_LIBRARY_PATH);
@@ -192,7 +192,7 @@ public class JREUtils {
 
     // Called before game launch to ensure all files are present and correct
     public static boolean prelaunchCheck(Activity activity, MinecraftInstances.Instance instance) throws Throwable {
-        runtimeDir = activity.getFilesDir() + "/runtimes/JRE";
+        runtimeDir = Constants.RUNTIME_DIR;
         JREUtils.relocateLibPath(activity, instance);
         setJavaEnvironment(activity, instance);
 
@@ -308,7 +308,7 @@ public class JREUtils {
             Logger.getInstance().appendToLog("Couldn't write DNS servers! " + e.getMessage());
         }
         return new ArrayList<>(Arrays.asList(
-                "-Djava.home=" + new File(ctx.getFilesDir(), "runtimes/JRE"),
+                "-Djava.home=" + new File(Constants.RUNTIME_DIR),
                 "-Djava.io.tmpdir=" + ctx.getCacheDir().getAbsolutePath(),
                 "-Duser.home=" + instance.gameDir,
                 "-Duser.language=" + System.getProperty("user.language"),

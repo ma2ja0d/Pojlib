@@ -75,7 +75,7 @@ public class LoginHelper {
 
                 result = pca.acquireTokenSilently(silentParameters).join();
                 MinecraftAccount acc = new Msa(activity).performLogin(result.accessToken());
-                GsonUtils.objectToJsonFile(activity.getFilesDir() + "/accounts/" + acc.uuid + ".json", acc);
+                GsonUtils.objectToJsonFile(Constants.ACCOUNTS_DIR + "/" + acc.uuid + ".json", acc);
                 if (!acc.uuid.equals(uuid)) {
                     // Refresh was for the wrong acc, try again
                     continue;
@@ -101,7 +101,7 @@ public class LoginHelper {
                     Thread.sleep(20);
                 }
                 try {
-                    API.currentAcc = MinecraftAccount.login(activity, activity.getFilesDir() + "/accounts", res.accessToken());
+                    API.currentAcc = MinecraftAccount.login(activity, Constants.ACCOUNTS_DIR, res.accessToken());
                 } catch (IOException | JSONException | MSAException e) {
                     Logger.getInstance().appendToLog("Unable to load account! | " + e);
                     return;

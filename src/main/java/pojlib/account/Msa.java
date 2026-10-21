@@ -67,7 +67,7 @@ public class Msa {
             fetchOwnedItems(mcToken);
             checkMcProfile(mcToken);
 
-            MinecraftAccount acc = MinecraftAccount.load(activity.getFilesDir() + "/accounts", mcUuid);
+            MinecraftAccount acc = MinecraftAccount.load(Constants.ACCOUNTS_DIR, mcUuid);
             if (acc == null) acc = new MinecraftAccount();
             if (doesOwnGame) {
                 acc.accessToken = mcToken;

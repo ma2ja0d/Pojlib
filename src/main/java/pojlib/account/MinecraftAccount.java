@@ -34,7 +34,7 @@ public class MinecraftAccount {
     }
 
     public static boolean removeAccount(Activity activity, String uuid) {
-        File accountFile = new File(activity.getFilesDir() + "/accounts/" + uuid + ".json");
+        File accountFile = new File(Constants.ACCOUNTS_DIR + "/" + uuid + ".json");
         File accountCache = new File(Constants.USER_HOME + "/cache_data");
 
         return accountFile.delete() && accountCache.delete();

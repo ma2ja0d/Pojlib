@@ -32,17 +32,17 @@ public class Installer {
 
     public static void installJVM(Activity activity, boolean force) {
         Logger.getInstance().appendToLog("Checking JRE");
-        File jre = new File(activity.getFilesDir(), "runtimes/JRE");
+        File jre = new File(Constants.RUNTIME_DIR);
         String jreURL = "https://github.com/QuestCraftPlusPlus/android-openjdk-build-multiarch/releases/latest/download/JRE.zip";
 
         try {
             if (!jre.exists() || force) {
                 Logger.getInstance().appendToLog("Installing JRE");
-                File jreZip = new File(activity.getFilesDir() + "/runtimes/JRE.zip");
+                File jreZip = new File(new File(Constants.RUNTIME_DIR).getParent(), "JRE.zip");
                 DownloadUtils.downloadFile(jreURL, jreZip);
                 DownloadManager.reset();
-                FileUtil.unzipArchive(jreZip.getPath(), activity.getFilesDir() + "/runtimes/JRE");
-                Files.copy(Paths.get(activity.getApplicationInfo().nativeLibraryDir + "/libawt_xawt.so"), Paths.get(activity.getFilesDir() + "/runtimes/JRE/lib/libawt_xawt.so"));
+                FileUtil.unzipArchive(jreZip.getPath(), Constants.RUNTIME_DIR);
+                Files.copy(Paths.get(activity.getApplicationInfo().nativeLibraryDir + "/libawt_xawt.so"), Paths.get(Constants.RUNTIME_DIR + "/lib/libawt_xawt.so"));
                 jreZip.delete();
             }
 
