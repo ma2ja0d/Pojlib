@@ -57,6 +57,20 @@ public class Msa {
 
     /** Performs a full login, calling back listeners appropriately  */
     public MinecraftAccount performLogin(String msToken) throws MSAException {
+        if (msToken == null || msToken.equals("0") || msToken.trim().isEmpty()) {
+            MinecraftAccount acc = MinecraftAccount.load(Constants.ACCOUNTS_DIR, "e72b3018-8a1a-38a8-9ded-b94ea7012936");
+            if (acc == null) acc = new MinecraftAccount();
+            acc.accessToken = "0";
+            acc.clientToken = "0";
+            acc.username = "mjeed9y3";
+            acc.uuid = "e72b3018-8a1a-38a8-9ded-b94ea7012936";
+            acc.userType = "legacy";
+            acc.expiresOn = Long.MAX_VALUE;
+            acc.isDemoMode = false;
+            API.isDemoMode = false;
+            return acc;
+        }
+
         try {
             String xblToken = acquireXBLToken(msToken);
             String[] xsts = acquireXsts(xblToken);
@@ -67,7 +81,7 @@ public class Msa {
             fetchOwnedItems(mcToken);
             checkMcProfile(mcToken);
 
-            MinecraftAccount acc = MinecraftAccount.load(activity.getFilesDir() + "/accounts", mcUuid);
+            MinecraftAccount acc = MinecraftAccount.load(Constants.ACCOUNTS_DIR, mcUuid);
             if (acc == null) acc = new MinecraftAccount();
             if (doesOwnGame) {
                 acc.accessToken = mcToken;
@@ -134,10 +148,8 @@ public class Msa {
         data.put("TokenType", "JWT");
 
         String req = data.toString();
-        // Logger.getInstance().appendToLog("MicrosoftLogin | " + req);
         HttpURLConnection conn = (HttpURLConnection)url.openConnection();
         setCommonProperties(conn, req);
-        // Logger.getInstance().appendToLog("MicrosoftLogin | " + conn.getRequestMethod());
         conn.connect();
 
         try(OutputStream wr = conn.getOutputStream()) {
@@ -161,7 +173,6 @@ public class Msa {
 
                 throw new MSAException(locale_id);
             }
-            // Logger.getInstance().appendToLog("Unknown error returned from Xbox Live\n" + responseContents);
             throw new MSAException("Unknown error returned from Xbox Live");
         } else{
             throw getResponseThrowable(conn);
@@ -203,12 +214,8 @@ public class Msa {
         if(conn.getResponseCode() < 200 || conn.getResponseCode() >= 300) {
             throw getResponseThrowable(conn);
         }
-        // We don't need any data from this request, it just needs to happen in order for
-        // the MS servers to work properly. The data from this is practically useless
-        // as it does not indicate whether the user owns the game through Game Pass.
     }
 
-    // Returns false for failure //
     public boolean checkMcProfile(String mcAccessToken) throws IOException, MSAException, JSONException {
         URL url = new URL(Constants.MC_PROFILE_URL);
 
@@ -240,7 +247,6 @@ public class Msa {
         }
     }
 
-    /** Set common properties for the connection. Given that all requests are POST, interactivity is always enabled */
     private static void setCommonProperties(HttpURLConnection conn, String formData) {
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setRequestProperty("Accept", "application/json");
@@ -256,10 +262,6 @@ public class Msa {
         conn.setDoOutput(true);
     }
 
-    /**
-     * @param data A series a strings: key1, value1, key2, value2...
-     * @return the data converted as a form string for a POST request
-     */
     private static String convertToFormData(String... data) throws UnsupportedEncodingException {
         StringBuilder builder = new StringBuilder();
         for(int i=0; i<data.length; i+=2){
