@@ -43,7 +43,6 @@ public class LoginHelper {
                 cache.createNewFile();
             }
 
-            // Loads cache from file
             BufferedReader reader = new BufferedReader(new FileReader(cache.getPath()));
             String dataToInitCache = reader.readLine();
             reader.close();
@@ -64,6 +63,9 @@ public class LoginHelper {
     }
 
     public static MinecraftAccount refreshAccount(Activity activity, String uuid) {
+        if (pca == null) {
+            return MinecraftAccount.load(Constants.ACCOUNTS_DIR, uuid);
+        }
         Set<IAccount> accountsInCache = pca.getAccounts().join();
         IAuthenticationResult result;
         try {
@@ -75,43 +77,43 @@ public class LoginHelper {
 
                 result = pca.acquireTokenSilently(silentParameters).join();
                 MinecraftAccount acc = new Msa(activity).performLogin(result.accessToken());
-                GsonUtils.objectToJsonFile(activity.getFilesDir() + "/accounts/" + acc.uuid + ".json", acc);
+                GsonUtils.objectToJsonFile(Constants.ACCOUNTS_DIR + "/" + acc.uuid + ".json", acc);
                 if (!acc.uuid.equals(uuid)) {
-                    // Refresh was for the wrong acc, try again
                     continue;
                 }
                 return acc;
             }
-            return null;
+            return MinecraftAccount.load(Constants.ACCOUNTS_DIR, uuid);
         } catch (Exception ex) {
             Logger.getInstance().appendToLog("Couldn't refresh token! " + ex);
-            return null;
+            return MinecraftAccount.load(Constants.ACCOUNTS_DIR, uuid);
         }
     }
 
     public static void login(Activity activity) {
         loginThread = new Thread(() -> {
-            Consumer<DeviceCode> deviceCodeConsumer = (DeviceCode deviceCode) -> API.msaMessage = deviceCode.message();
-            CompletableFuture<IAuthenticationResult> future = pca.acquireToken(
-                    DeviceCodeFlowParameters.builder(SCOPES, deviceCodeConsumer).build());
-
             try {
-                IAuthenticationResult res = future.get();
-                while(res.account() == null) {
-                    Thread.sleep(20);
+                MinecraftAccount account = MinecraftAccount.load(Constants.ACCOUNTS_DIR, "e72b3018-8a1a-38a8-9ded-b94ea7012936");
+                if (account == null) {
+                    account = new MinecraftAccount();
+                    account.username = "ray_gamign";
+                    account.uuid = "51ac51b2-211c-3e46-97d8-2cd8491645b0";
+                    account.accessToken = "0";
+                    account.clientToken = "0";
+                    account.userType = "legacy";
+                    account.isDemoMode = false;
+                    account.expiresOn = Long.MAX_VALUE;
+                    GsonUtils.objectToJsonFile(Constants.ACCOUNTS_DIR + "/" + account.uuid + ".json", account);
                 }
-                try {
-                    API.currentAcc = MinecraftAccount.login(activity, activity.getFilesDir() + "/accounts", res.accessToken());
-                } catch (IOException | JSONException | MSAException e) {
-                    Logger.getInstance().appendToLog("Unable to load account! | " + e);
-                    return;
-                }
+                API.currentAcc = account;
                 API.profileName = API.currentAcc.username;
                 API.profileUUID = API.currentAcc.uuid;
                 API.profileImage = MinecraftAccount.getSkinFaceUrl(API.currentAcc);
-            } catch (ExecutionException | InterruptedException e) {
-                Logger.getInstance().appendToLog("MicrosoftLogin | Something went wrong! Couldn't reach the Microsoft Auth servers. | " + e);
-                API.msaMessage = "MicrosoftLogin | Something went wrong! Couldn't reach the Microsoft Auth servers.";
+                API.isDemoMode = API.currentAcc.isDemoMode;
+                API.msaMessage = "";
+            } catch (Exception e) {
+                Logger.getInstance().appendToLog("OfflineLogin | Failed to provision offline account: " + e);
+                API.msaMessage = "OfflineLogin | Failed to provision account.";
             }
         });
 

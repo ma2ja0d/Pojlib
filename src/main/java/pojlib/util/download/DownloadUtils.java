@@ -21,14 +21,17 @@ public class DownloadUtils {
         int attempts = 0;
 
         while (true) {
+            HttpURLConnection conn = null;
             try {
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestProperty("User-Agent", "QuestCraft");
                 conn.setConnectTimeout(10000);
+                conn.setReadTimeout(30000); // don't hang forever on a stalled connection
                 conn.setDoInput(true);
                 conn.connect();
 
-                if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                int code = conn.getResponseCode();
+                if (code == HttpURLConnection.HTTP_OK) {
                     if(size == -1) {
                         size = conn.getContentLengthLong();
                     }
@@ -38,10 +41,20 @@ public class DownloadUtils {
                     }
                     return;
                 }
+                // Any non-200 answer used to loop forever without counting an attempt.
+                throw new IOException("HTTP " + code + " from " + url);
             } catch (IOException e) {
                 if (++attempts >= MAX_RETRIES || e instanceof SSLException) {
                     throw new IOException("Unable to download from " + url, e);
                 }
+                try {
+                    Thread.sleep(1000L * attempts);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Download interrupted", ie);
+                }
+            } finally {
+                if (conn != null) conn.disconnect();
             }
         }
     }

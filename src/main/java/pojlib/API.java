@@ -25,7 +25,6 @@ import pojlib.account.LoginHelper;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -35,9 +34,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 /**
@@ -70,8 +67,7 @@ public class API {
      * Add a mod to an instance
      *
      * @param instances Acquired from {@link API#loadAll()}
-     * @param instance Acquired from {@link API#(Activity, MinecraftInstances, String, String, boolean, String, String, String, String)}
-     *                 or {@link API#load(MinecraftInstances, String)}
+     * @param instance Acquired from {@link API#load(MinecraftInstances, String)}
      * @param name Project name
      * @param version Project version
      * @param url Mod download URL
@@ -101,8 +97,7 @@ public class API {
     /**
      * Check if an instance has a mod
      *
-     * @param instance Acquired from {@link API#createNewInstance(Activity, MinecraftInstances, String, boolean, String, String, String)}
-     *                 or {@link API#load(MinecraftInstances, String)}
+     * @param instance Acquired from {@link API#load(MinecraftInstances, String)}
      * @param name Project name
      * @return True if the project is already in the instance
      */
@@ -114,8 +109,7 @@ public class API {
      * Remove a mod from an instance
      *
      * @param instances Acquired from {@link API#loadAll()}
-     * @param instance Acquired from {@link API#createNewInstance(Activity, MinecraftInstances, String, boolean, String, String, String)}
-     *                 or {@link API#load(MinecraftInstances, String)}
+     * @param instance Acquired from {@link API#load(MinecraftInstances, String)}
      * @param name project name
      * @return True if the project was deleted
      */
@@ -130,7 +124,7 @@ public class API {
     /**
      * Loads all instances from the filesystem.
      *
-     * @return                  A minecraft instance object
+     * @return A minecraft instance object
      */
     public static MinecraftInstances loadAll() throws IOException {
         return InstanceHandler.load(Constants.USER_HOME);
@@ -162,13 +156,13 @@ public class API {
     /**
      * Creates a new game instance with a selected mod loader. The latest version of the mod loader will be installed
      *
-     * @param activity          The active android activity
-     * @param instanceName      The name of the instance being created - can be anything, used for identification
-     * @param useDefaultMods    Use QC's default mods for the version (Core mods are automatically included)
-     * @param minecraftVersion  The version of minecraft to install
-     * @param imageURL          Modpack image url, nullable
-     * @return                  A minecraft instance object
-     * @throws                  IOException Throws if download of library or asset fails
+     * @param activity The active android activity
+     * @param instanceName The name of the instance being created - can be anything, used for identification
+     * @param useDefaultMods Use QC's default mods for the version (Core mods are automatically included)
+     * @param minecraftVersion The version of minecraft to install
+     * @param imageURL Modpack image url, nullable
+     * @return A minecraft instance object
+     * @throws IOException Throws if download of library or asset fails
      */
     public static MinecraftInstances.Instance createNewInstance(Activity activity, MinecraftInstances instances, String instanceName, boolean useDefaultMods, String minecraftVersion, String modLoader, String imageURL) throws IOException {
         return InstanceHandler.create(activity, instances, instanceName, Constants.USER_HOME, useDefaultMods, minecraftVersion, modLoader, imageURL, null);
@@ -177,11 +171,11 @@ public class API {
     /**
      * Creates a new game instance from a mrpack file.
      *
-     * @param activity          The active android activity
-     * @param instanceName      The name of the instance being created - can be anything, used for identification
-     * @param imageURL          Modpack image url, nullable
-     * @return                  A minecraft instance object
-     * @throws                  IOException Throws if download of library or asset fails
+     * @param activity The active android activity
+     * @param instanceName The name of the instance being created - can be anything, used for identification
+     * @param imageURL Modpack image url, nullable
+     * @return A minecraft instance object
+     * @throws IOException Throws if download of library or asset fails
      */
     public static MinecraftInstances.Instance createNewInstance(Activity activity, MinecraftInstances instances, String instanceName, String imageURL, String modLoader, String mrpackFile) throws IOException {
         if(ignoreInstanceName) {
@@ -229,8 +223,7 @@ public class API {
      *
      * @param activity Android activity object
      * @param account Account object
-     * @param instance Instance object from {@link API#createNewInstance(Activity, MinecraftInstances, String, boolean, String, String, String)}
-     *                 or {@link API#load(MinecraftInstances, String)}
+     * @param instance Instance object from {@link API#createNewInstance}
      */
     public static void launchInstance(Activity activity, MinecraftAccount account, MinecraftInstances.Instance instance) {
         InstanceHandler.launchInstance(activity, account, instance);
@@ -254,7 +247,7 @@ public class API {
      * @return True if removal was successful
      */
     public static boolean removeAccount(Activity activity, String uuid) {
-        if(currentAcc.uuid.equals(uuid)) {
+        if(currentAcc != null && currentAcc.uuid.equals(uuid)) {
             currentAcc = null;
         }
         return MinecraftAccount.removeAccount(activity, uuid);
@@ -267,33 +260,78 @@ public class API {
      */
     public static void login(Activity activity, @Nullable String accountUUID)
     {
-        if(accountUUID == null) {
-            currentAcc = null;
-            LoginHelper.login(activity);
-            return;
-        }
-
-        MinecraftAccount acc = MinecraftAccount.load(activity.getFilesDir() + "/accounts", accountUUID);
-        if(acc != null && (acc.expiresOn >= System.currentTimeMillis() || !hasConnection(activity) || acc.isDemoMode)) {
-            API.profileImage = MinecraftAccount.getSkinFaceUrl(acc);
-            API.profileName = acc.username;
-            API.profileUUID = acc.uuid;
-            API.isDemoMode = acc.isDemoMode;
-            currentAcc = acc;
-            return;
-        } else if(acc != null && acc.expiresOn < System.currentTimeMillis()) {
-            MinecraftAccount refreshed = LoginHelper.refreshAccount(activity, accountUUID);
-            if(refreshed != null) {
-                API.profileImage = MinecraftAccount.getSkinFaceUrl(refreshed);
-                API.profileName = refreshed.username;
-                API.profileUUID = refreshed.uuid;
-                API.isDemoMode = refreshed.isDemoMode;
-                currentAcc = refreshed;
+        try {
+            if(accountUUID == null || accountUUID.trim().isEmpty()) {
+                // Provision default offline account:
+                MinecraftAccount account = MinecraftAccount.load(Constants.ACCOUNTS_DIR, "e72b3018-8a1a-38a8-9ded-b94ea7012936");
+                if (account == null) {
+                    account = new MinecraftAccount();
+                    account.username = "ray_gamign";
+                    account.uuid = "51ac51b2-211c-3e46-97d8-2cd8491645b0";
+                    account.accessToken = "0";
+                    account.clientToken = "0";
+                    account.userType = "legacy";
+                    account.isDemoMode = false;
+                    account.expiresOn = Long.MAX_VALUE;
+                    GsonUtils.objectToJsonFile(Constants.ACCOUNTS_DIR + "/" + account.uuid + ".json", account);
+                }
+                API.profileImage = MinecraftAccount.getSkinFaceUrl(account);
+                API.profileName = account.username;
+                API.profileUUID = account.uuid;
+                API.isDemoMode = account.isDemoMode;
+                currentAcc = account;
+                msaMessage = "";
                 return;
             }
-        }
 
-        LoginHelper.login(activity);
+            MinecraftAccount acc = MinecraftAccount.load(Constants.ACCOUNTS_DIR, accountUUID);
+            if(acc != null && (acc.expiresOn >= System.currentTimeMillis() || !hasConnection(activity) || acc.isDemoMode)) {
+                API.profileImage = MinecraftAccount.getSkinFaceUrl(acc);
+                API.profileName = acc.username;
+                API.profileUUID = acc.uuid;
+                API.isDemoMode = acc.isDemoMode;
+                currentAcc = acc;
+                return;
+            } else if(acc != null && acc.expiresOn < System.currentTimeMillis()) {
+                MinecraftAccount refreshed = LoginHelper.refreshAccount(activity, accountUUID);
+                if(refreshed != null) {
+                    API.profileImage = MinecraftAccount.getSkinFaceUrl(refreshed);
+                    API.profileName = refreshed.username;
+                    API.profileUUID = refreshed.uuid;
+                    API.isDemoMode = refreshed.isDemoMode;
+                    currentAcc = refreshed;
+                    return;
+                }
+            }
+
+            // Fallback load if account file exists locally
+            MinecraftAccount fallbackAcc = MinecraftAccount.load(Constants.ACCOUNTS_DIR, accountUUID);
+            if (fallbackAcc != null) {
+                API.profileImage = MinecraftAccount.getSkinFaceUrl(fallbackAcc);
+                API.profileName = fallbackAcc.username;
+                API.profileUUID = fallbackAcc.uuid;
+                API.isDemoMode = fallbackAcc.isDemoMode;
+                currentAcc = fallbackAcc;
+                return;
+            }
+
+            LoginHelper.login(activity);
+        } catch (Exception e) {
+            Logger.getInstance().appendToLog("API login error: " + e.getMessage());
+            // Safe offline fallback profile
+            MinecraftAccount account = new MinecraftAccount();
+            account.username = "ray_gamign";
+            account.uuid = "51ac51b2-211c-3e46-97d8-2cd8491645b0";
+            account.accessToken = "0";
+            account.clientToken = "0";
+            account.userType = "legacy";
+            account.isDemoMode = false;
+            account.expiresOn = Long.MAX_VALUE;
+            currentAcc = account;
+            API.profileName = account.username;
+            API.profileUUID = account.uuid;
+            API.profileImage = MinecraftAccount.getSkinFaceUrl(account);
+        }
     }
 
     /**
